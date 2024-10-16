@@ -1,4 +1,8 @@
-### pachyderm
+## Monitoring repo
+
+This repo contains monitoring tools such as Prometheus, Grafana and Thanos
+
+### Grafana
 ```
 helm upgrade -i pachyderm ./apps/pachyderm/dev -n mlops-dev --create-namespace --dry-run
 helm upgrade -i pachyderm . -n mlops-dev --create-namespace --dry-run
