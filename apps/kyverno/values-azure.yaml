@@ -1,0 +1,21 @@
+kyverno:
+  admissionController:
+    replicas: 5
+
+  existingImagePullSecrets:
+    - docker-cache-registry-docker-dev-secrets
+    - docker-cache-registry-docker-live-secrets
+    - docker-cache-registry-docker-secrets
+    - docker-cache-registry-sand-docker-dev-secrets
+    - docker-cache-registry-sand-docker-live-secrets
+    - docker-cache-registry-sand-docker-secrets
+
+  tolerations:
+    - effect: NoSchedule
+      key: kubernetes.azure.com/scalesetpriority
+      operator: Equal
+      value: spot
+
+  config:
+    webhookAnnotations: # https://kyverno.io/docs/installation/platform-notes/#notes-for-aks-users
+      "admissions.enforcer/disabled": "true"

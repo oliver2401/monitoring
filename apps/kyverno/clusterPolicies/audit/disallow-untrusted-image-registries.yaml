@@ -1,0 +1,129 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-image-registries
+  annotations:
+    policies.kyverno.io/title: Restrict Image Registries
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/description: >-
+      Images from unknown, public registries can be of dubious quality and may not be
+      scanned and secured, representing a high degree of risk. Requiring use of known, approved
+      registries helps reduce threat exposure by ensuring image pulls only come from them.    
+spec:
+  validationFailureAction: audit
+  background: true
+  rules:
+  - name: validate-registries
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: >-
+          [E002]Image registries are restricted
+          (details: Kyverno+rules#Kyvernorules-[E002]Imageregistriesarerestricted)
+      pattern:
+        spec:
+          =(ephemeralContainers):
+          - image: "docker*.artifactory.dev.my-registry-TBD/* | docker*-proxy-*.aks.{{ .Values.clusterAzureEnv }}.my-registry-TBD/*"
+          =(initContainers):
+          - image: "docker*.artifactory.dev.my-registry-TBD/* | docker*-proxy-*.aks.{{ .Values.clusterAzureEnv }}.my-registry-TBD/*"
+          containers:
+          - image: "docker*.artifactory.dev.my-registry-TBD/* | docker*-proxy-*.aks.{{ .Values.clusterAzureEnv }}.my-registry-TBD/*"
+clusterFilter:
+  clusterProvider: "azure"
+  clusterTier: "dev"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-image-registries
+  annotations:
+    policies.kyverno.io/title: Restrict Image Registries
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/description: >-
+      Images from unknown, public registries can be of dubious quality and may not be
+      scanned and secured, representing a high degree of risk. Requiring use of known, approved
+      registries helps reduce threat exposure by ensuring image pulls only come from them.    
+spec:
+  validationFailureAction: Enforce
+  validationFailureActionOverrides:
+    - action: Audit
+      namespaces:
+        - ai
+        - aks-command
+        - argo
+        - argocd
+        - argo-events
+        - argo-workflows
+        - azure-devops
+        - azure-workload-identity-system
+        - cert-manager
+        - compliance
+        - canary-checker
+        - csi
+        - daemonsets
+        - dataplatform
+        - datatools
+        - default
+        - devops
+        - devx
+        - elasticsearch
+        - external-dns
+        - external-secrets
+        - gatekeeper-system
+        - gemstone
+        - gpu-resources
+        - kafka
+        - keda
+        - kserve
+        - kube-node-lease
+        - jenkins
+        - jfrog
+        - kube-public
+        - kube-system
+        - kubecost
+        - kubernetes-dashboard
+        - kubescape
+        - kyverno
+        - logging
+        - monitoring
+        - opa
+        - open
+        - opis
+        - otlp
+        - policy-reporter
+        - reporting
+        - spot-handler
+        - techfoundation
+        - time
+        - vault
+        - robusta
+        - velero
+        - walls
+  background: true
+  rules:
+  - name: validate-registries
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: >-
+          [E002]Image registries are restricted
+          (details: https://wiki.my-registry-TBD/wiki/display/CE/Kyverno+rules#Kyvernorules-[E002]Imageregistriesarerestricted)
+      pattern:
+        spec:
+          =(ephemeralContainers):
+          - image: "docker*.artifactory.dev.my-registry-TBD/* | docker*-proxy-*.aks.{{ .Values.clusterAzureEnv }}.my-registry-TBD/*"
+          =(initContainers):
+          - image: "docker*.artifactory.dev.my-registry-TBD/* | docker*-proxy-*.aks.{{ .Values.clusterAzureEnv }}.my-registry-TBD/*"
+          containers:
+          - image: "docker*.artifactory.dev.my-registry-TBD/* | docker*-proxy-*.aks.{{ .Values.clusterAzureEnv }}.my-registry-TBD/*"
+clusterFilter:
+  clusterProvider: "azure"
+  excludeClusterTier: "dev"

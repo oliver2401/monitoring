@@ -1,0 +1,46 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: no-loadbalancer-service
+  annotations:
+    policies.kyverno.io/title: Disallow Service Type LoadBalancer
+    policies.kyverno.io/category: Internal Logic
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      Especially in cloud provider environments, a Service having type LoadBalancer will cause the
+      provider to respond by creating a load balancer somewhere in the customer account. This adds
+      cost and complexity to a deployment. Without restricting this ability, users may easily
+      overrun established budgets and security practices set by the organization. This policy restricts
+      use of the Service type LoadBalancer.      
+spec:
+  validationFailureAction: audit
+  background: false
+  webhookTimeoutSeconds: 20
+  rules:
+  - name: svc-loadbalancer-internal
+    match:
+      any:
+      - resources:
+          kinds:
+          - Service
+    exclude:
+        resources:
+          namespaces:
+            - kube-public
+            - kube-system
+    preconditions:
+      all:
+        - key: "{{`{{ request.object.spec.type || '' }}`}}"
+          operator: Equals
+          value: "LoadBalancer"
+    validate:
+      message: >-
+        [E005]Service of type LoadBalancer has to be internal
+        (details: Kyverno+rules#Kyvernorules-[E005]ServiceoftypeLoadBalancerisrestricted)
+      anyPattern:
+        - metadata:
+            annotations:
+              service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+        - metadata:
+            annotations:
+              service.beta.kubernetes.io/azure-load-balancer-internal: "true"

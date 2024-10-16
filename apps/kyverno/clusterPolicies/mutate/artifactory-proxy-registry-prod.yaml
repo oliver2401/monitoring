@@ -1,0 +1,128 @@
+{{- if and (eq .Values.clusterProvider "azure") (has .Values.clusterTier (list "qa" "prodcp" "sand" "prod")) }}
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: replace-image-registry-artifactory
+  annotations:
+    policies.kyverno.io/title: Replace Image Registry for Artifactory docker-live only
+    pod-policies.kyverno.io/autogen-controllers: none
+    policies.kyverno.io/category: Registry
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Docker cache registry
+spec:
+  webhookTimeoutSeconds: 20
+  background: false
+  failurePolicy: Ignore
+  rules:
+    - name: replace-image-registry-docker-containers
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+            operations:
+              - CREATE
+              #- UPDATE
+      exclude:
+        resources:
+          namespaces:
+            - azure-workload-identity-system
+            - cert-manager
+            - canary-checker
+            - csi
+            - gatekeeper-system
+            - kube-node-lease
+            - kube-public
+            - kube-system
+            - kyverno
+            - opa
+            - policy-reporter
+            - vault
+            - external-secrets
+      mutate:
+        foreach:
+        - list: "request.object.spec.containers"
+          context:
+          - name: cluster
+            variable:
+              value: {{ .Values.clusterName }}
+          - name: clusterTier
+            variable:
+              value: {{ .Values.clusterTier }}
+          - name: image
+            imageRegistry: 
+              reference: "{{`{{ regex_replace_all('(docker-live)(.artifactory.dev.mycompany.com/)', '{{element.image}}', '${1}-artifactory-proxy-{{ cluster }}.aks.{{ clusterTier }}1.mycompany.com/' )}}`}}"
+          - name: imagecheck
+            variable:
+              value: "{{`{{ image && image.configData && image.configData.architecture || 'empty' }}`}}"
+          preconditions:
+            all:
+              - key: "{{`{{ imagecheck }}`}}"
+                operator: NotEquals
+                value: "empty"
+          patchStrategicMerge:
+            spec:
+              imagePullSecrets:
+              - name: docker-cache-registry-docker-live-secrets
+              containers:
+              - name: "{{`{{ element.name }}`}}"
+                image: "{{`{{ regex_replace_all('(docker-live)(.artifactory.dev.mycompany.com/)', '{{element.image}}', '${1}-artifactory-proxy-{{ cluster }}.aks.{{ clusterTier }}1.mycompany.com/' )}}`}}"
+    - name: replace-image-registry-docker-initcontainers
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+            operations:
+              - CREATE
+              #- UPDATE
+      preconditions:
+        all:
+        - key: "{{ printf "{{ request.object.spec.initContainers[] || `%s` | length(@) }}" "[]" }}"
+          operator: GreaterThanOrEquals
+          value: 1
+      exclude:
+        resources:
+          namespaces:
+            - azure-workload-identity-system
+            - cert-manager
+            - canary-checker
+            - csi
+            - gatekeeper-system
+            - kube-node-lease
+            - kube-public
+            - kube-system
+            - kyverno
+            - opa
+            - policy-reporter
+            - vault
+      mutate:
+        foreach:
+        - list: "request.object.spec.initContainers"
+          context:
+          - name: cluster
+            variable:
+              value: {{ .Values.clusterName }}
+          - name: clusterTier
+            variable:
+              value: {{ .Values.clusterTier }}
+          - name: image
+            imageRegistry: 
+              reference: "{{`{{ regex_replace_all('(docker-live)(.artifactory.dev.mycompany.com/)', '{{element.image}}', '${1}-artifactory-proxy-{{ cluster }}.aks.{{ clusterTier }}1.mycompany.com/' )}}`}}"
+          - name: imagecheck
+            variable:
+              value: "{{`{{ image && image.configData && image.configData.architecture || 'empty' }}`}}"
+          preconditions:
+            all:
+              - key: "{{`{{ imagecheck }}`}}"
+                operator: NotEquals
+                value: "empty"
+          patchStrategicMerge:
+            spec:
+              imagePullSecrets:
+              - name: docker-cache-registry-docker-live-secrets
+              initContainers:
+              - name: "{{`{{ element.name }}`}}"
+                image: "{{`{{ regex_replace_all('(docker-live)(.artifactory.dev.mycompany.com/)', '{{element.image}}', '${1}-artifactory-proxy-{{ cluster }}.aks.{{ clusterTier }}1.mycompany.com/' )}}`}}"
+{{- end }}

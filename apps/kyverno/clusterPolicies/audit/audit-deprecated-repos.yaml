@@ -1,0 +1,28 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: deprecated-image-repos
+  annotations:
+    policies.kyverno.io/title: Deprecated Image Repositories
+    policies.kyverno.io/category: Deprecation Monitoring
+    policies.kyverno.io/severity: medium
+spec:
+  validationFailureAction: audit
+  background: true
+  webhookTimeoutSeconds: 20
+  rules:
+    - name: deprecated-repos
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      validate:
+        message: Some images in this Pod come from a deprecated repository.
+        deny:
+          conditions:
+            all:
+            - key: "{{`{{ images.[containers, initContainers, ephemeralContainers][].*.name[] }}`}}"
+              operator: AnyIn
+              value:
+                - "k8s.gcr.io"

@@ -1,0 +1,491 @@
+kyverno:
+  customLabels:
+    Product: DevOps
+    ProdcutComponents: kyverno
+
+  crds:
+    migration:
+      enabled: true
+      image:
+        registry: my-registry-TBD
+        repository: ghcr.io/kyverno/kyverno
+        tag: v1.12.5
+        pullPolicy: IfNotPresent
+      imagePullSecrets:
+        - name: docker-live
+      nodeSelector:
+        kubernetes.io/os: linux
+        kubernetes.io/arch: amd64
+      tolerations:
+        - key: kubernetes.azure.com/scalesetpriority
+          operator: Equal
+          value: spot
+          effect: NoSchedule
+
+  webhooksCleanup:
+    enabled: true
+    image:
+      registry: my-registry-TBD
+      repository: docker.io/bitnami/kubectl
+      tag: "1.28.5"
+      pullPolicy: IfNotPresent
+    imagePullSecrets:
+      - name: docker-live
+    tolerations:
+      - key: kubernetes.azure.com/scalesetpriority
+        operator: Equal
+        value: spot
+        effect: NoSchedule
+
+  policyReportsCleanup:
+    enabled: true
+    image:
+      registry: my-registry-TBD
+      repository: docker.io/bitnami/kubectl
+      tag: "1.28.5"
+      pullPolicy: IfNotPresent
+    imagePullSecrets:
+      - name: docker-live
+    tolerations:
+      - key: kubernetes.azure.com/scalesetpriority
+        operator: Equal
+        value: spot
+        effect: NoSchedule  
+
+  admissionController:
+    tracing:
+      enabled: true
+      address: otlp-collector.otlp.svc.cluster.local
+      port: 4317
+
+    container:
+      image:
+        registry: my-registry-TBD
+        repository: ghcr.io/kyverno/kyverno
+        tag: v1.12.5
+        pullPolicy: IfNotPresent
+
+      resources:
+        limits:
+          cpu: 2
+          memory: 1024Mi
+        requests:
+          cpu: 500m
+          memory: 512Mi
+
+    replicas: 3
+
+    nodeSelector:
+      kubernetes.io/os: linux
+      kubernetes.io/arch: amd64
+
+    tolerations:
+      - key: kubernetes.azure.com/scalesetpriority
+        operator: Equal
+        value: spot
+        effect: NoSchedule
+
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+              - key: ProdcutComponents
+                operator: In
+                values:
+                  - kyverno-admission-controller
+          topologyKey: kubernetes.io/hostname
+        - labelSelector:
+            matchExpressions:
+              - key: k8s-app
+                operator: In
+                values:
+                  - kube-dns
+          topologyKey: kubernetes.io/hostname
+
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        prometheus: prometheus-k8s
+        o11y_tenant: k8s
+
+    imagePullSecrets:
+      - name: docker-live
+
+    podLabels:
+      ProdcutComponents: kyverno-admission-controller
+
+    initContainer:
+      image:
+        registry: my-registry-TBD
+        repository: ghcr.io/kyverno/kyvernopre
+        tag: v1.12.5
+
+  reportsController:
+    tracing:
+      enabled: true
+      address: otlp-collector.otlp.svc.cluster.local
+      port: 4317
+
+    enabled: true
+    image:
+      registry: my-registry-TBD
+      repository: ghcr.io/kyverno/reports-controller
+      tag: v1.12.5
+      pullPolicy: IfNotPresent
+
+    resources:
+      limits:
+        cpu: 2
+        memory: 2048Mi
+      requests:
+        cpu: 200m
+        memory: 1024Mi
+
+    imagePullSecrets:
+      - name: docker-live
+
+    podLabels:
+      ProdcutComponents: kyverno-reports-controller
+
+    replicas: 2
+
+    nodeSelector:
+      kubernetes.io/os: linux
+      kubernetes.io/arch: amd64
+
+    tolerations:
+      - key: kubernetes.azure.com/scalesetpriority
+        operator: Equal
+        value: spot
+        effect: NoSchedule
+
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        prometheus: prometheus-k8s
+        o11y_tenant: k8s
+
+  backgroundController:
+    tracing:
+      enabled: true
+      address: otlp-collector.otlp.svc.cluster.local
+      port: 4317
+
+    enabled: true
+    image:
+      registry: my-registry-TBD
+      repository: ghcr.io/kyverno/background-controller
+      tag: v1.12.5
+      pullPolicy: IfNotPresent
+
+    resources:
+      limits:
+        memory: 1024Mi
+      requests:
+        cpu: 200m
+        memory: 256Mi
+
+    imagePullSecrets:
+      - name: docker-live
+
+    podLabels:
+      ProdcutComponents: kyverno-background-controller
+
+    replicas: 3
+
+    nodeSelector:
+      kubernetes.io/os: linux
+      kubernetes.io/arch: amd64
+    tolerations:
+      - key: kubernetes.azure.com/scalesetpriority
+        operator: Equal
+        value: spot
+        effect: NoSchedule
+
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+              - key: ProdcutComponents
+                operator: In
+                values:
+                  - kyverno-background-controller
+          topologyKey: kubernetes.io/hostname
+        - labelSelector:
+            matchExpressions:
+              - key: k8s-app
+                operator: In
+                values:
+                  - kube-dns
+          topologyKey: kubernetes.io/hostname
+
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        prometheus: prometheus-k8s
+        o11y_tenant: k8s
+
+  cleanupController:
+    tracing:
+      enabled: true
+      address: otlp-collector.otlp.svc.cluster.local
+      port: 4317
+
+    enabled: true
+    image:
+      registry: my-registry-TBD
+      repository: ghcr.io/kyverno/cleanup-controller
+      tag: v1.12.5
+      pullPolicy: IfNotPresent
+
+    imagePullSecrets:
+      - name: docker-live
+
+    podLabels:
+      ProdcutComponents: kyverno-cleanup-controller
+
+    replicas: 2
+
+    nodeSelector:
+      kubernetes.io/os: linux
+      kubernetes.io/arch: amd64
+    tolerations:
+      - key: kubernetes.azure.com/scalesetpriority
+        operator: Equal
+        value: spot
+        effect: NoSchedule
+
+  cleanupJobs:
+    admissionReports:
+      image:
+        registry: my-registry-TBD
+        repository: docker.io/bitnami/kubectl
+        tag: "1.28.5"
+        pullPolicy: IfNotPresent
+      imagePullSecrets:
+        - name: docker-live
+      enabled: true
+      nodeSelector:
+        kubernetes.io/os: linux
+        kubernetes.io/arch: amd64
+      tolerations:
+        - key: kubernetes.azure.com/scalesetpriority
+          operator: Equal
+          value: spot
+          effect: NoSchedule
+    clusterAdmissionReports:
+      image:
+        registry: my-registry-TBD
+        repository: docker.io/bitnami/kubectl
+        tag: "1.28.5"
+        pullPolicy: IfNotPresent
+      imagePullSecrets:
+        - name: docker-live
+      enabled: true
+      nodeSelector:
+        kubernetes.io/os: linux
+        kubernetes.io/arch: amd64
+      tolerations:
+        - key: kubernetes.azure.com/scalesetpriority
+          operator: Equal
+          value: spot
+          effect: NoSchedule
+    updateRequests:
+      image:
+        registry: my-registry-TBD
+        repository: docker.io/bitnami/kubectl
+        tag: "1.28.5"
+        pullPolicy: IfNotPresent
+      imagePullSecrets:
+        - name: docker-live
+      enabled: true
+      nodeSelector:
+        kubernetes.io/os: linux
+        kubernetes.io/arch: amd64
+      tolerations:
+        - key: kubernetes.azure.com/scalesetpriority
+          operator: Equal
+          value: spot
+          effect: NoSchedule
+    ephemeralReports:
+      image:
+        registry: my-registry-TBD
+        repository: docker.io/bitnami/kubectl
+        tag: "1.28.5"
+        pullPolicy: IfNotPresent
+      imagePullSecrets:
+        - name: docker-live
+      enabled: true
+      nodeSelector:
+        kubernetes.io/os: linux
+        kubernetes.io/arch: amd64
+      tolerations:
+        - key: kubernetes.azure.com/scalesetpriority
+          operator: Equal
+          value: spot
+          effect: NoSchedule
+    clusterEphemeralReports:
+      image:
+        registry: my-registry-TBD
+        repository: docker.io/bitnami/kubectl
+        tag: "1.28.5"
+        pullPolicy: IfNotPresent
+      imagePullSecrets:
+        - name: docker-live
+      nodeSelector:
+        kubernetes.io/os: linux
+        kubernetes.io/arch: amd64
+      tolerations:
+        - key: kubernetes.azure.com/scalesetpriority
+          operator: Equal
+          value: spot
+          effect: NoSchedule
+  
+  config:
+    excludeKyvernoNamespace: true
+
+    resourceFiltersExcludeNamespaces:
+      - kyverno
+      - kube-system
+      - aks-command
+      - kube-node-lease
+      - kube-public
+
+    resourceFilters:
+      - "[Event,*,*]"
+      - "[*/*,kube-system,*]"
+      - "[*/*,kube-public,*]"
+      - "[*/*,kube-node-lease,*]"
+      - "[Node,*,*]"
+      - "[Node/*,*,*]"
+      - "[APIService,*,*]"
+      - "[APIService/*,*,*]"
+      - "[TokenReview,*,*]"
+      - "[SubjectAccessReview,*,*]"
+      - "[SelfSubjectAccessReview,*,*]"
+      - "[Binding,*,*]"
+      - "[Pod/binding,*,*]"
+      - "[ReplicaSet,*,*]"
+      - "[ReplicaSet/*,*,*]"
+      - "[AdmissionReport,*,*]"
+      - "[AdmissionReport/*,*,*]"
+      - "[ClusterAdmissionReport,*,*]"
+      - "[ClusterAdmissionReport/*,*,*]"
+      - "[BackgroundScanReport,*,*]"
+      - "[BackgroundScanReport/*,*,*]"
+      - "[ClusterBackgroundScanReport,*,*]"
+      - "[ClusterBackgroundScanReport/*,*,*]"
+      # exclude resources from the chart
+      - '[ClusterRole,*,{{ template "kyverno.admission-controller.roleName" . }}]'
+      - '[ClusterRole,*,{{ template "kyverno.admission-controller.roleName" . }}:core]'
+      - '[ClusterRole,*,{{ template "kyverno.admission-controller.roleName" . }}:additional]'
+      - '[ClusterRole,*,{{ template "kyverno.background-controller.roleName" . }}]'
+      - '[ClusterRole,*,{{ template "kyverno.background-controller.roleName" . }}:core]'
+      - '[ClusterRole,*,{{ template "kyverno.background-controller.roleName" . }}:additional]'
+      - '[ClusterRole,*,{{ template "kyverno.cleanup-controller.roleName" . }}]'
+      - '[ClusterRole,*,{{ template "kyverno.cleanup-controller.roleName" . }}:core]'
+      - '[ClusterRole,*,{{ template "kyverno.cleanup-controller.roleName" . }}:additional]'
+      - '[ClusterRole,*,{{ template "kyverno.reports-controller.roleName" . }}]'
+      - '[ClusterRole,*,{{ template "kyverno.reports-controller.roleName" . }}:core]'
+      - '[ClusterRole,*,{{ template "kyverno.reports-controller.roleName" . }}:additional]'
+      - '[ClusterRoleBinding,*,{{ template "kyverno.admission-controller.roleName" . }}]'
+      - '[ClusterRoleBinding,*,{{ template "kyverno.background-controller.roleName" . }}]'
+      - '[ClusterRoleBinding,*,{{ template "kyverno.cleanup-controller.roleName" . }}]'
+      - '[ClusterRoleBinding,*,{{ template "kyverno.reports-controller.roleName" . }}]'
+      - '[ServiceAccount,{{ include "kyverno.namespace" . }},{{ template "kyverno.admission-controller.serviceAccountName" . }}]'
+      - '[ServiceAccount/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.admission-controller.serviceAccountName" . }}]'
+      - '[ServiceAccount,{{ include "kyverno.namespace" . }},{{ template "kyverno.background-controller.serviceAccountName" . }}]'
+      - '[ServiceAccount/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.background-controller.serviceAccountName" . }}]'
+      - '[ServiceAccount,{{ include "kyverno.namespace" . }},{{ template "kyverno.cleanup-controller.serviceAccountName" . }}]'
+      - '[ServiceAccount/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.cleanup-controller.serviceAccountName" . }}]'
+      - '[ServiceAccount,{{ include "kyverno.namespace" . }},{{ template "kyverno.reports-controller.serviceAccountName" . }}]'
+      - '[ServiceAccount/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.reports-controller.serviceAccountName" . }}]'
+      - '[Role,{{ include "kyverno.namespace" . }},{{ template "kyverno.admission-controller.roleName" . }}]'
+      - '[Role,{{ include "kyverno.namespace" . }},{{ template "kyverno.background-controller.roleName" . }}]'
+      - '[Role,{{ include "kyverno.namespace" . }},{{ template "kyverno.cleanup-controller.roleName" . }}]'
+      - '[Role,{{ include "kyverno.namespace" . }},{{ template "kyverno.reports-controller.roleName" . }}]'
+      - '[RoleBinding,{{ include "kyverno.namespace" . }},{{ template "kyverno.admission-controller.roleName" . }}]'
+      - '[RoleBinding,{{ include "kyverno.namespace" . }},{{ template "kyverno.background-controller.roleName" . }}]'
+      - '[RoleBinding,{{ include "kyverno.namespace" . }},{{ template "kyverno.cleanup-controller.roleName" . }}]'
+      - '[RoleBinding,{{ include "kyverno.namespace" . }},{{ template "kyverno.reports-controller.roleName" . }}]'
+      - '[ConfigMap,{{ include "kyverno.namespace" . }},{{ template "kyverno.config.configMapName" . }}]'
+      - '[ConfigMap,{{ include "kyverno.namespace" . }},{{ template "kyverno.config.metricsConfigMapName" . }}]'
+      - '[Deployment,{{ include "kyverno.namespace" . }},{{ template "kyverno.admission-controller.name" . }}]'
+      - '[Deployment/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.admission-controller.name" . }}]'
+      - '[Deployment,{{ include "kyverno.namespace" . }},{{ template "kyverno.background-controller.name" . }}]'
+      - '[Deployment/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.background-controller.name" . }}]'
+      - '[Deployment,{{ include "kyverno.namespace" . }},{{ template "kyverno.cleanup-controller.name" . }}]'
+      - '[Deployment/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.cleanup-controller.name" . }}]'
+      - '[Deployment,{{ include "kyverno.namespace" . }},{{ template "kyverno.reports-controller.name" . }}]'
+      - '[Deployment/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.reports-controller.name" . }}]'
+      - '[Pod,{{ include "kyverno.namespace" . }},{{ template "kyverno.admission-controller.name" . }}-*]'
+      - '[Pod/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.admission-controller.name" . }}-*]'
+      - '[Pod,{{ include "kyverno.namespace" . }},{{ template "kyverno.background-controller.name" . }}-*]'
+      - '[Pod/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.background-controller.name" . }}-*]'
+      - '[Pod,{{ include "kyverno.namespace" . }},{{ template "kyverno.cleanup-controller.name" . }}-*]'
+      - '[Pod/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.cleanup-controller.name" . }}-*]'
+      - '[Pod,{{ include "kyverno.namespace" . }},{{ template "kyverno.reports-controller.name" . }}-*]'
+      - '[Pod/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.reports-controller.name" . }}-*]'
+      - '[Job,{{ include "kyverno.namespace" . }},{{ template "kyverno.fullname" . }}-hook-pre-delete]'
+      - '[Job/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.fullname" . }}-hook-pre-delete]'
+      - '[NetworkPolicy,{{ include "kyverno.namespace" . }},{{ template "kyverno.admission-controller.name" . }}]'
+      - '[NetworkPolicy/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.admission-controller.name" . }}]'
+      - '[NetworkPolicy,{{ include "kyverno.namespace" . }},{{ template "kyverno.background-controller.name" . }}]'
+      - '[NetworkPolicy/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.background-controller.name" . }}]'
+      - '[NetworkPolicy,{{ include "kyverno.namespace" . }},{{ template "kyverno.cleanup-controller.name" . }}]'
+      - '[NetworkPolicy/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.cleanup-controller.name" . }}]'
+      - '[NetworkPolicy,{{ include "kyverno.namespace" . }},{{ template "kyverno.reports-controller.name" . }}]'
+      - '[NetworkPolicy/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.reports-controller.name" . }}]'
+      - '[PodDisruptionBudget,{{ include "kyverno.namespace" . }},{{ template "kyverno.admission-controller.name" . }}]'
+      - '[PodDisruptionBudget/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.admission-controller.name" . }}]'
+      - '[PodDisruptionBudget,{{ include "kyverno.namespace" . }},{{ template "kyverno.background-controller.name" . }}]'
+      - '[PodDisruptionBudget/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.background-controller.name" . }}]'
+      - '[PodDisruptionBudget,{{ include "kyverno.namespace" . }},{{ template "kyverno.cleanup-controller.name" . }}]'
+      - '[PodDisruptionBudget/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.cleanup-controller.name" . }}]'
+      - '[PodDisruptionBudget,{{ include "kyverno.namespace" . }},{{ template "kyverno.reports-controller.name" . }}]'
+      - '[PodDisruptionBudget/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.reports-controller.name" . }}]'
+      - '[Service,{{ include "kyverno.namespace" . }},{{ template "kyverno.admission-controller.serviceName" . }}]'
+      - '[Service/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.admission-controller.serviceName" . }}]'
+      - '[Service,{{ include "kyverno.namespace" . }},{{ template "kyverno.admission-controller.serviceName" . }}-metrics]'
+      - '[Service/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.admission-controller.serviceName" . }}-metrics]'
+      - '[Service,{{ include "kyverno.namespace" . }},{{ template "kyverno.background-controller.name" . }}-metrics]'
+      - '[Service/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.background-controller.name" . }}-metrics]'
+      - '[Service,{{ include "kyverno.namespace" . }},{{ template "kyverno.cleanup-controller.name" . }}]'
+      - '[Service/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.cleanup-controller.name" . }}]'
+      - '[Service,{{ include "kyverno.namespace" . }},{{ template "kyverno.cleanup-controller.name" . }}-metrics]'
+      - '[Service/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.cleanup-controller.name" . }}-metrics]'
+      - '[Service,{{ include "kyverno.namespace" . }},{{ template "kyverno.reports-controller.name" . }}-metrics]'
+      - '[Service/*,{{ include "kyverno.namespace" . }},{{ template "kyverno.reports-controller.name" . }}-metrics]'
+      - '[ServiceMonitor,{{ if .Values.admissionController.serviceMonitor.namespace }}{{ .Values.admissionController.serviceMonitor.namespace }}{{ else }}{{ template "kyverno.namespace" . }}{{ end }},{{ template "kyverno.admission-controller.name" . }}]'
+      - '[ServiceMonitor,{{ if .Values.admissionController.serviceMonitor.namespace }}{{ .Values.admissionController.serviceMonitor.namespace }}{{ else }}{{ template "kyverno.namespace" . }}{{ end }},{{ template "kyverno.background-controller.name" . }}]'
+      - '[ServiceMonitor,{{ if .Values.admissionController.serviceMonitor.namespace }}{{ .Values.admissionController.serviceMonitor.namespace }}{{ else }}{{ template "kyverno.namespace" . }}{{ end }},{{ template "kyverno.cleanup-controller.name" . }}]'
+      - '[ServiceMonitor,{{ if .Values.admissionController.serviceMonitor.namespace }}{{ .Values.admissionController.serviceMonitor.namespace }}{{ else }}{{ template "kyverno.namespace" . }}{{ end }},{{ template "kyverno.reports-controller.name" . }}]'
+      - '[Secret,{{ include "kyverno.namespace" . }},{{ template "kyverno.admission-controller.serviceName" . }}.{{ template "kyverno.namespace" . }}.svc.*]'
+      - '[Secret,{{ include "kyverno.namespace" . }},{{ template "kyverno.cleanup-controller.name" . }}.{{ template "kyverno.namespace" . }}.svc.*]'
+      # crds:
+      - "[*.kyverno.io,*,*]"
+      - "[*.coreos.com,*,*]"
+      - "[*.slok.dev,*,*]"
+      - "[*.gatekeeper.sh,*,*]"
+      - "[*.istio.io,*,*]"
+      - "[*.velero.io,*,*]"
+      - "[*.cert-manager.io,*,*]"
+      - "[*.wgpolicyk8s.io,*,*]"
+      - "[*.external-secrets.io,*,*]"
+      - "[*.keda.sh,*,*]"
+      - "[*.argoproj.io,*,*]"
+      - "[*.externaldns.k8s.io,*,*]"
+      - "[*.crd.k8s.amazonaws.com,*,*]"
+      - "[*.k8s.aws,*,*]"
+      - "[*.kyverno.io,*,*]"
+      - "[*.seldon.io,*,*]"
+      - "[*.crossplane.io,*,*]"
+      - "[*.aadpodidentity.k8s.io,*,*]"
+      - "[*.strimzi.io,*,*]"
+      - "[*.csi.x-k8s.io,*,*]"
+
+clusterProvider: "" # "azure|aws"
+clusterTier: "" # 'dev|qa|sand|prod'
+clusterRegion: "" # 'us|eu|ap|au'
+clusterName: ""
+clusterAzureEnv: ""

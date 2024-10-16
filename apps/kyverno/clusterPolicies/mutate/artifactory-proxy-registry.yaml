@@ -1,0 +1,152 @@
+{{- if and (eq .Values.clusterProvider "azure") (has .Values.clusterTier (list "dev" "devcp")) }}
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: replace-image-registry-artifactory
+  annotations:
+    policies.kyverno.io/title: Replace Image Registry for Artifactory docker-live/docker-dev
+    pod-policies.kyverno.io/autogen-controllers: none
+    policies.kyverno.io/category: Registry
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Docker cache registry
+spec:
+  webhookTimeoutSeconds: 20
+  background: false
+  failurePolicy: Ignore
+  rules:
+    - name: replace-image-registry-docker-containers
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+            operations:
+              - CREATE
+              #- UPDATE
+      exclude:
+        resources:
+          namespaces:
+            - azure-workload-identity-system
+            - cert-manager
+            - canary-checker
+            - csi
+            - gatekeeper-system
+            - kube-node-lease
+            - kube-public
+            - kube-system
+            - kyverno
+            - opa
+            - policy-reporter
+            - vault
+            - external-secrets
+            {{- if and (eq .Values.clusterProvider "azure") (has .Values.clusterTier (list "dev")) (has .Values.clusterName (list "aks-dev1-alfa-eastus")) }}
+            - azure-devops
+            - jenkins
+            - olexandrz
+            {{- end }}
+      mutate:
+        foreach:
+        - list: "request.object.spec.containers"
+          context:
+          - name: cluster
+            variable:
+              value: {{ .Values.clusterName }}
+          - name: clusterTier
+            variable:
+              value: {{ .Values.clusterTier }}
+          - name: environment
+            variable:
+              value : {{ .Values.clusterAzureEnv }}
+          - name: image
+            imageRegistry: 
+              reference: "{{`{{ regex_replace_all('(docker-dev|docker|docker-live)(.artifactory.dev.mycompany.com/)', '{{element.image}}', '${1}-artifactory-proxy-{{ cluster }}.aks.{{ environment }}.mycompany.com/' )}}`}}"
+          - name: imagecheck
+            variable:
+              value: "{{`{{ image && image.configData && image.configData.architecture || 'empty' }}`}}"
+          preconditions:
+            all:
+              - key: "{{`{{ imagecheck }}`}}"
+                operator: NotEquals
+                value: "empty"
+          patchStrategicMerge:
+            spec:
+              imagePullSecrets:
+              - name: docker-cache-registry-docker-live-secrets
+              - name: docker-cache-registry-docker-dev-secrets
+              {{- if and (eq .Values.clusterProvider "azure") (has .Values.clusterTier (list "dev")) }}
+              - name: docker-cache-registry-docker-secrets
+              {{- end }}
+              containers:
+              - name: "{{`{{ element.name }}`}}"
+                image: "{{`{{ regex_replace_all('(docker-dev|docker|docker-live)(.artifactory.dev.mycompany.com/)', '{{element.image}}', '${1}-artifactory-proxy-{{ cluster }}.aks.{{ environment }}.mycompany.com/' )}}`}}"
+    - name: replace-image-registry-docker-initcontainers
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+            operations:
+              - CREATE
+              #- UPDATE
+      preconditions:
+        all:
+        - key: "{{ printf "{{ request.object.spec.initContainers[] || `%s` | length(@) }}" "[]" }}"
+          operator: GreaterThanOrEquals
+          value: 1
+      exclude:
+        resources:
+          namespaces:
+            - azure-workload-identity-system
+            - cert-manager
+            - csi
+            - canary-checker
+            - gatekeeper-system
+            - kube-node-lease
+            - kube-public
+            - kube-system
+            - kyverno
+            - opa
+            - policy-reporter
+            - vault
+            {{- if and (eq .Values.clusterProvider "azure") (has .Values.clusterTier (list "dev")) (has .Values.clusterName (list "aks-dev1-alfa-eastus")) }}
+            - azure-devops
+            - jenkins
+            - olexandrz
+            {{- end }}
+      mutate:
+        foreach:
+        - list: "request.object.spec.initContainers"
+          context:
+          - name: cluster
+            variable:
+              value: {{ .Values.clusterName }}
+          - name: clusterTier
+            variable:
+              value: {{ .Values.clusterTier }}
+          - name: environment
+            variable:
+              value : {{ .Values.clusterAzureEnv }}
+          - name: image
+            imageRegistry: 
+              reference: "{{`{{ regex_replace_all('(docker-dev|docker|docker-live)(.artifactory.dev.mycompany.com/)', '{{element.image}}', '${1}-artifactory-proxy-{{ cluster }}.aks.{{ environment }}.mycompany.com/' )}}`}}"
+          - name: imagecheck
+            variable:
+              value: "{{`{{ image && image.configData && image.configData.architecture || 'empty' }}`}}"
+          preconditions:
+            all:
+              - key: "{{`{{ imagecheck }}`}}"
+                operator: NotEquals
+                value: "empty"
+          patchStrategicMerge:
+            spec:
+              imagePullSecrets:
+              - name: docker-cache-registry-docker-live-secrets
+              - name: docker-cache-registry-docker-dev-secrets
+              {{- if and (eq .Values.clusterProvider "azure") (has .Values.clusterTier (list "dev")) }}
+              - name: docker-cache-registry-docker-secrets
+              {{- end }}
+              initContainers:
+              - name: "{{`{{ element.name }}`}}"
+                image: "{{`{{ regex_replace_all('(docker-dev|docker|docker-live)(.artifactory.dev.mycompany.com/)', '{{element.image}}', '${1}-artifactory-proxy-{{ cluster }}.aks.{{ environment }}.mycompany.com/' )}}`}}"
+{{- end }}

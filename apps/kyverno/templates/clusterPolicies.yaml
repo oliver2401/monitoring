@@ -1,0 +1,40 @@
+{{- $currentScope := .}}
+{{- range $path, $_ :=  .Files.Glob "clusterPolicies/*/*.yaml" }}
+      {{- $policies := (split "---" ($.Files.Get $path)) }}
+      {{- range $policy := $policies }}
+      {{- with $currentScope}}
+      {{- $policy := ((tpl $policy .) | fromYaml) }}
+      {{- if $policy.clusterFilter }}
+
+        {{- $includeTierCondition := or (not $policy.clusterFilter.clusterTier) (and $policy.clusterFilter.clusterTier (eq $policy.clusterFilter.clusterTier .Values.clusterTier)) }}
+        {{- $includeRegionCondition := or (not $policy.clusterFilter.clusterRegion) (and $policy.clusterFilter.clusterRegion (eq $policy.clusterFilter.clusterRegion .Values.clusterRegion)) }}
+        {{- $includeClusterNameCondition := or (not $policy.clusterFilter.clusterName) (and $policy.clusterFilter.clusterName (eq $policy.clusterFilter.clusterName .Values.clusterName)) }}
+        {{- $includeProviderCondition := or (not $policy.clusterFilter.clusterProvider) (and $policy.clusterFilter.clusterProvider (eq $policy.clusterFilter.clusterProvider .Values.clusterProvider)) }}
+
+        {{- $excludeTierCondition := or (not $policy.clusterFilter.excludeClusterTier) (and $policy.clusterFilter.excludeClusterTier (ne $policy.clusterFilter.excludeClusterTier .Values.clusterTier)) }}
+        {{- $excludeRegionCondition := or (not $policy.clusterFilter.excludeClusterRegion) (and $policy.clusterFilter.excludeClusterRegion (ne $policy.clusterFilter.excludeClusterRegion .Values.clusterRegion)) }}
+        {{- $excludeClusterNameCondition := or (not $policy.clusterFilter.excludeClusterName) (and $policy.clusterFilter.excludeClusterName (ne $policy.clusterFilter.excludeClusterName .Values.clusterName)) }}
+        {{- $excludeProviderCondition := or (not $policy.clusterFilter.excludeClusterProvider) (and $policy.clusterFilter.excludeClusterProvider (ne $policy.clusterFilter.excludeClusterProvider .Values.clusterProvider)) }}
+
+        {{- $tierCondition := and $includeTierCondition $excludeTierCondition }}
+        {{- $regionCondition := and $includeRegionCondition $excludeRegionCondition }}
+        {{- $clusterNameCondition := and $includeClusterNameCondition $excludeClusterNameCondition }}
+        {{- $providerCondition := and $includeProviderCondition $excludeProviderCondition }}
+
+        {{- if and $tierCondition $regionCondition $clusterNameCondition $providerCondition }}
+
+apiVersion: {{ $policy.apiVersion }}
+kind: {{ $policy.kind }}
+metadata: 
+  {{- $policy.metadata | toYaml | nindent 2 }}
+spec: 
+  {{- $policy.spec | toYaml | nindent 2 }}
+        {{- printf "\n---\n" }}
+        {{- end }}
+      {{- else }}
+        {{- tpl ($.Files.Get $path) .}}
+        {{- printf "\n---\n" }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}

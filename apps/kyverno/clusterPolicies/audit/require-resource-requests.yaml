@@ -1,0 +1,36 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-requests
+  annotations:
+    policies.kyverno.io/title: Require resource requests
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      As application workloads share cluster resources it is recommended to require resource requests per Pod,
+      especially for memory and CPU. If a Namespace level request or limit is specified,
+      defaults will automatically be applied to each Pod based on the LimitRange configuration.
+      This policy validates that all containers have something specified for memory and CPU
+      requests and memory limits.      
+spec:
+  validationFailureAction: audit
+  background: false
+  webhookTimeoutSeconds: 20
+  rules:
+  - name: validate-resources
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: >-
+        [E003]CPU and memory resource requests are required
+        (details: my-url/Kyverno+rules#Kyvernorules-[E003]CPUandmemoryresourcerequestsarerequired)
+      pattern:
+        spec:
+          containers:
+          - resources:
+              requests:
+                memory: "?*"
+                cpu: "?*"

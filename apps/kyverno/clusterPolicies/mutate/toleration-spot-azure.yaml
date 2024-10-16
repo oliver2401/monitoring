@@ -1,0 +1,70 @@
+{{- if and (eq .Values.clusterProvider "azure") (has .Values.clusterTier (list "dev" "devcp")) }}
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: add-spot-ondemand-toleration
+  annotations:
+    policies.kyverno.io/title: Add Spot and Ondemand Tolerations
+    policies.kyverno.io/category: Spot Instance Support
+    # policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Pod tolerations are used to allow pod schedule on Spot and Demand Nodes
+spec:
+  webhookTimeoutSeconds: 20
+  rules:
+    - name: add-spot-ondemand-toleration
+      match:
+        resources:
+          kinds:
+            - Pod
+      exclude:
+        resources:
+          namespaces:
+            - elasticsearch
+            - velero
+            - vault
+            - kube-system
+      preconditions:
+        any:
+          - key: "{{`{{ request.object.spec.tolerations[].key || [] }}`}}"
+            operator: AllNotIn
+            value:
+              - kubernetes.azure.com/scalesetpriority
+              - kubernetes.mycompany.com/scalesetpriority
+      mutate:
+        patchesJson6902: |-
+          - op: add
+            path: "/spec/tolerations/-"
+            value: 
+              key: kubernetes.azure.com/scalesetpriority
+              operator: Equal
+              value: spot
+              effect: NoSchedule
+    - name: add-ondemand-toleration
+      match:
+        resources:
+          kinds:
+            - Pod
+          namespaces:
+            - elasticsearch
+            - velero
+            - vault
+            - kube-system
+      preconditions:
+        all:
+          - key: "{{`{{ request.object.spec.tolerations[].key || [] }}`}}"
+            operator: AllNotIn
+            value:
+              - kubernetes.azure.com/scalesetpriority
+              - kubernetes.mycompany.com/scalesetpriority
+      mutate:
+        patchesJson6902: |-
+          - op: add
+            path: "/spec/tolerations/-"
+            value: 
+              key: kubernetes.mycompany.com/scalesetpriority
+              operator: Equal
+              value: ondemand
+              effect: NoSchedule
+{{- end }}

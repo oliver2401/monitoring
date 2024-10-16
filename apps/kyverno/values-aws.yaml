@@ -1,0 +1,4 @@
+kyverno:
+  tolerations:
+    - key: CriticalAddonsOnly
+      operator: Exists

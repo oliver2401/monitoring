@@ -1,0 +1,155 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-run-as-nonroot
+  annotations:
+    policies.kyverno.io/title: Require runAsNonRoot
+    policies.kyverno.io/category: Kubernetes Security Hardening
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/description: >-
+      Containers must be required to run as non-root users. This policy ensures
+      `runAsNonRoot` is set to `true`. 
+spec:
+  validationFailureAction: audit
+  background: true
+  rules:
+    - name: run-as-non-root
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      validate:
+        message: >-
+          [E011]Require runAsNonRoot
+          (details: my-url/Kyverno+rules#Kyvernorules-[E011]RequirerunAsNonRoot)       
+        anyPattern:
+        - spec:
+            securityContext:
+              runAsNonRoot: "true"
+            =(ephemeralContainers):
+            - =(securityContext):
+                =(runAsNonRoot): "true"
+            =(initContainers):
+            - =(securityContext):
+                =(runAsNonRoot): "true"
+            containers:
+            - =(securityContext):
+                =(runAsNonRoot): "true"
+        - spec:
+            =(ephemeralContainers):
+            - securityContext:
+                runAsNonRoot: "true"
+            =(initContainers):
+            - securityContext:
+                runAsNonRoot: "true"
+            containers:
+            - securityContext:
+                runAsNonRoot: "true"
+clusterFilter:
+  clusterProvider: "azure"
+  excludeClusterTier: "qa"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-run-as-nonroot
+  annotations:
+    policies.kyverno.io/title: Require runAsNonRoot
+    policies.kyverno.io/category: Kubernetes Security Hardening
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/description: >-
+      Containers must be required to run as non-root users. This policy ensures
+      `runAsNonRoot` is set to `true`. 
+spec:
+  validationFailureAction: Enforce
+  validationFailureActionOverrides:
+    - action: Audit
+      namespaces:
+        - ai
+        - aks-command
+        - argo
+        - argo-events
+        - argo-workflows
+        - azure-devops
+        - azure-workload-identity-system
+        - cert-manager
+        - canary-checker
+        - compliance
+        - csi
+        - daemonsets
+        - dataplatform
+        - datatools
+        - default
+        - devops
+        - devx
+        - elasticsearch
+        - external-dns
+        - external-secrets
+        - gatekeeper-system
+        - gemstone
+        - gpu-resources
+        - jenkins
+        - kafka
+        - keda
+        - kserve
+        - kube-node-lease
+        - kube-public
+        - kube-system
+        - kubecost
+        - kubernetes-dashboard
+        - kubescape
+        - kyverno
+        - logging
+        - monitoring
+        - opa
+        - open
+        - opis
+        - otlp
+        - policy-reporter
+        - reporting
+        - robusta
+        - spot-handler
+        - techfoundation
+        - time
+        - vault
+        - velero
+        - walls
+  background: true
+  rules:
+    - name: run-as-non-root
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      validate:
+        message: >-
+          [E011]Require runAsNonRoot
+          (details: my-url/Kyverno+rules#Kyvernorules-[E011]RequirerunAsNonRoot)       
+        anyPattern:
+        - spec:
+            securityContext:
+              runAsNonRoot: "true"
+            =(ephemeralContainers):
+            - =(securityContext):
+                =(runAsNonRoot): "true"
+            =(initContainers):
+            - =(securityContext):
+                =(runAsNonRoot): "true"
+            containers:
+            - =(securityContext):
+                =(runAsNonRoot): "true"
+        - spec:
+            =(ephemeralContainers):
+            - securityContext:
+                runAsNonRoot: "true"
+            =(initContainers):
+            - securityContext:
+                runAsNonRoot: "true"
+            containers:
+            - securityContext:
+                runAsNonRoot: "true"
+clusterFilter:
+  clusterProvider: "azure"
+  clusterTier: "qa"

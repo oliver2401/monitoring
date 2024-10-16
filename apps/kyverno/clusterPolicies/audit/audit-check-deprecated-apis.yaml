@@ -1,0 +1,38 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: check-deprecated-apis
+  annotations:
+    policies.kyverno.io/title: Check deprecated APIs
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      Kubernetes APIs are sometimes deprecated and removed after a few releases.
+      As a best practice, older API versions should be replaced with newer versions.
+      This policy validates for APIs that are deprecated or scheduled for removal.
+spec:
+  validationFailureAction: audit
+  background: true
+  rules:
+  - name: validate-v1-29-removals
+    match:
+      any:
+      - resources:
+          kinds:
+          - flowcontrol.apiserver.k8s.io/*/FlowSchema
+          - flowcontrol.apiserver.k8s.io/*/PriorityLevelConfiguration
+    preconditions:
+      all:
+      - key: "{{`{{ request.operation || 'BACKGROUND' }}`}}"
+        operator: NotEquals
+        value: DELETE
+      - key: "{{`{{request.object.apiVersion}}`}}"
+        operator: AnyIn
+        value:
+        - flowcontrol.apiserver.k8s.io/v1beta2
+    validate:
+      message: >-
+        {{`{{ request.object.apiVersion }}`}}/{{`{{ request.object.kind }}`}} is deprecated and will be removed in k8s v1.29.
+        [E018]Deprecated APIs should be replaced with newer versions
+        (details: Kyverno+rules#Kyvernorules-[E018]DeprecatedAPIsshouldbereplacedwithnewerversions)
+      deny: {}

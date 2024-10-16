@@ -1,0 +1,32 @@
+{{- if eq .Values.clusterProvider "aws" }}
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: add-karpenter-do-not-evict-annotation
+  annotations:
+    policies.kyverno.io/title: Add Karpenter do not evict annotation
+    policies.kyverno.io/category: Workaround
+    policies.kyverno.io/description: >-
+      As we wait for products to migrate to karpenter annotation, 
+      we are adding karpenter annotation to pods that have cluster-autoscaler annotation.
+spec:
+  webhookTimeoutSeconds: 20
+  rules:
+    - name: add-karpenter-do-not-evict-annotation
+      match:
+        resources:
+          kinds:
+            - Pod
+      preconditions:
+        any:
+          - key: "{{`{{ request.object.metadata.annotations.keys(@) || [] }}`}}"
+            operator: AnyIn
+            value:
+              - "cluster-autoscaler.kubernetes.io/safe-to-evict"
+      mutate:
+        patchStrategicMerge:
+          metadata:
+            annotations:
+              +(karpenter.sh/do-not-evict): "true"
+              +(karpenter.sh/do-not-disrupt): "true"
+{{- end }}

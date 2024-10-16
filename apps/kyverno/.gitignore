@@ -1,0 +1,5 @@
+charts/*
+tests/*
+Chart.lock
+test.yaml
+.idea/*

@@ -1,0 +1,60 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: deployments-with-ingress-pdb-missing
+  annotations:
+    policies.kyverno.io/title: Deployment and Statefulset with Ingress should have PDB
+    policies.kyverno.io/category: Reliability
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/subject: PDB
+    policies.kyverno.io/description: >-
+      Ensures that all deployments related to services used as backends in an Ingress resource
+      have a corresponding Pod Disruption Budget (PDB) defined. This ensures that services
+      behind ingresses are protected from disruptions.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: deployments-with-ingress-pdb-missing
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+                - StatefulSet
+      exclude:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+              namespaces:
+                - "policy-reporter"
+      context:
+        - name: ingressData
+          apiCall:
+            urlPath: "/apis/networking.k8s.io/v1/ingresses"
+            jmesPath: "items[].spec.rules[].http.paths[].backend.service | [?name == '{{`{{ request.object.metadata.name }}`}}'].name | [0]"
+
+        - name: matchingPDBs
+          apiCall:
+            urlPath: "/apis/policy/v1/poddisruptionbudgets"
+            jmesPath: "items[].metadata[] | [?name == '{{`{{ request.object.metadata.name }}`}}'].name | [0]"
+
+      preconditions:
+        all:
+          - key: "{{`{{ request.operation || 'BACKGROUND' }}`}}"
+            operator: AnyIn
+            value:
+              - CREATE
+              - UPDATE
+
+      validate:
+        message: >-
+         [E019]Deployment and Statefulset with Ingress should have PDB
+          (details: Kyverno+rules#Kyvernorules-[E019]DeploymentandStatefulsetwithIngressshouldhavePDB)
+        deny:
+          conditions:
+            all:
+              - key: "{{`{{ ingressData }}`}}"
+                operator: NotEquals
+                value: "{{`{{ matchingPDBs }}`}}"

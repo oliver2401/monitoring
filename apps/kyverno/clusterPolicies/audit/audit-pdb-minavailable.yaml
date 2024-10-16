@@ -1,0 +1,52 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: pdb-minavailable-check
+  annotations:
+    policies.kyverno.io/title: Check PodDisruptionBudget minAvailable
+    policies.kyverno.io/category: Internal Logic
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/description: >-
+      When a Pod controller which can run multiple replicas is subject to an active PodDisruptionBudget,
+      if the replicas field has a value equal to the minAvailable value of the PodDisruptionBudget
+      it may prevent voluntary disruptions including Node drains which may impact routine maintenance
+      tasks and disrupt operations. This policy checks Deployments and StatefulSets which have
+      a matching PodDisruptionBudget to ensure these two values do not match.      
+spec:
+  validationFailureAction: audit
+  background: true
+  webhookTimeoutSeconds: 20
+  rules:
+    - name: pdb-minavailable
+      match:
+        any:
+          - resources:
+              kinds:
+                - PodDisruptionBudget
+      context:
+        - name: minavailabledeploy
+          apiCall:
+            urlPath: "/apis/apps/v1/namespaces/{{`{{request.namespace}}`}}/deployments"
+            jmesPath: "items[?label_match({{`{{request.object.spec.selector.matchLabels}}`}}, spec.template.metadata.labels)] | [0] | spec.replicas || `9999`"
+        - name: minavailablests
+          apiCall:
+            urlPath: "/apis/apps/v1/namespaces/{{`{{request.namespace}}`}}/statefulsets"
+            jmesPath: "items[?label_match({{`{{request.object.spec.selector.matchLabels}}`}}, spec.template.metadata.labels)] | [0] | spec.replicas || `9999`"
+      preconditions:
+        any:
+          - key: "{{`{{ request.object.spec.minAvailable || 'NotSpecified' }}`}}"
+            operator: AnyNotIn
+            value: ["*%", "N/A"]
+      validate:
+        message: >-
+          [E006]The PodDisruptionBudget for this resource has its minAvailable value equal to the replica count
+          (details: #Kyvernorules-[E006]ThePodDisruptionBudgetforthisresourcehasitsminAvailablevalueequaltothereplicacount)
+        deny:
+          conditions:
+            any:
+              - key: "{{`{{ request.object.spec.minAvailable }}`}}"  # deploy
+                operator: Equals
+                value: "{{`{{ minavailabledeploy }}`}}"
+              - key: "{{`{{ request.object.spec.minAvailable }}`}}"  # sts
+                operator: Equals
+                value: "{{`{{ minavailablests }}`}}"

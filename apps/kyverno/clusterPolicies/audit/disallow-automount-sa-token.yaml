@@ -1,0 +1,121 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-automount-sa-token
+  annotations:
+    policies.kyverno.io/title: Restrict Auto-Mount of Service Account Tokens
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/description: >-
+      Kubernetes automatically mounts ServiceAccount credentials in each Pod.
+      The ServiceAccount may be assigned roles allowing Pods to access API resources.
+      Blocking this ability is an extension of the least privilege best practice and should
+      be followed if Pods do not need to speak to the API server to function.
+      This policy ensures that mounting of these ServiceAccount tokens is blocked.      
+spec:
+  validationFailureAction: audit
+  background: true
+  rules:
+  - name: validate-automountServiceAccountToken
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: >-
+        [E009]Auto-mounting of Service Account tokens is not allowed.
+        (details: Kyverno+rules#Kyvernorules-[E009]Auto-mountingofServiceAccounttokensisnotallowed)
+      pattern:
+        spec:
+          automountServiceAccountToken: "false"
+clusterFilter:
+  clusterProvider: "azure"
+  excludeClusterTier: "qa"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-automount-sa-token
+  annotations:
+    policies.kyverno.io/title: Restrict Auto-Mount of Service Account Tokens
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/description: >-
+      Kubernetes automatically mounts ServiceAccount credentials in each Pod.
+      The ServiceAccount may be assigned roles allowing Pods to access API resources.
+      Blocking this ability is an extension of the least privilege best practice and should
+      be followed if Pods do not need to speak to the API server to function.
+      This policy ensures that mounting of these ServiceAccount tokens is blocked.      
+spec:
+  validationFailureAction: Enforce
+  validationFailureActionOverrides:
+    - action: Audit
+      namespaces:
+        - ai
+        - aks-command
+        - argo
+        - argo-events
+        - argo-workflows
+        - azure-devops
+        - azure-workload-identity-system
+        - cert-manager
+        - compliance
+        - canary-checker
+        - csi
+        - daemonsets
+        - dataplatform
+        - datatools
+        - default
+        - devops
+        - devx
+        - elasticsearch
+        - external-dns
+        - external-secrets
+        - gatekeeper-system
+        - gemstone
+        - gpu-resources
+        - jenkins
+        - kafka
+        - keda
+        - kserve
+        - kube-node-lease
+        - kube-public
+        - kube-system
+        - kubecost
+        - kubernetes-dashboard
+        - kubescape
+        - kyverno
+        - logging
+        - monitoring
+        - opa
+        - open
+        - opis
+        - otlp
+        - policy-reporter
+        - reporting
+        - robusta
+        - spot-handler
+        - techfoundation
+        - time
+        - vault
+        - velero
+        - walls
+  background: true
+  rules:
+  - name: validate-automountServiceAccountToken
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: >-
+        [E009]Auto-mounting of Service Account tokens is not allowed.
+        (details: Kyverno+rules#Kyvernorules-[E009]Auto-mountingofServiceAccounttokensisnotallowed)
+      pattern:
+        spec:
+          automountServiceAccountToken: "false"
+clusterFilter:
+  clusterProvider: "azure"
+  clusterTier: "qa"

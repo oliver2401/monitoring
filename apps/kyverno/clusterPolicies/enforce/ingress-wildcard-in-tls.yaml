@@ -1,0 +1,48 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: block-ingress-wildcard-in-tls
+  annotations:
+    policies.kyverno.io/title: Restrict Ingress Host with Wildcards in TLS
+    policies.kyverno.io/category: Internal Logic
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      Ingress hosts optionally accept a wildcard as an alternative
+      to precise matching. In some cases, this may be too permissive as it
+      would direct unintended traffic to the given Ingress resource. This
+      policy enforces that any Ingress host does not contain a wildcard
+      character.
+spec:
+  background: false
+  validationFailureAction: Enforce
+  webhookTimeoutSeconds: 20
+  rules:
+    - name: block-ingress-wildcard-in-tls
+      match:
+        any:
+        - resources:
+            kinds:
+              - Ingress
+      preconditions:
+        all:
+        - key: '{{`{{ request.operation || ''BACKGROUND'' }}`}}'
+          operator: AnyIn
+          value: ["CREATE", "UPDATE"]
+        - key: "{{`{{ request.object.spec.tls || [] }}`}}"
+          operator: NotEquals
+          value: []
+        - key: "{{`{{ request.object.metadata.annotations.\"external-dns.alpha.kubernetes.io/ignore\" || '' }}`}}"
+          operator: NotEquals
+          value: "true"
+      validate:
+        message: >-
+          [E001]Wildcards are not permitted as hosts in spec.tls
+          (details: my-url/Kyverno+rules#Kyvernorules-[E001]Wildcardsarenotpermittedashosts)
+        foreach:
+        - list: "request.object.spec.tls[].hosts[]"
+          deny:
+            conditions:
+              any:
+              - key: '{{`{{ contains(element, ''*'') }}`}}'
+                operator: Equals
+                value: true

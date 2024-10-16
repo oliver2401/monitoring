@@ -1,0 +1,29 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: multiple-replicas
+  annotations:
+    policies.kyverno.io/title: Require Multiple Replicas
+    policies.kyverno.io/severity: low
+    policies.kyverno.io/description: >-
+      Deployments and StatefulSets with a single replica cannot be highly available and thus the application
+      may suffer downtime if that one replica goes down. This policy validates that Deployments and StatefulSets
+      have more than one replica.      
+spec:
+  validationFailureAction: audit
+  background: true
+  rules:
+    - name: multiple-replicas
+      match:
+        any:
+        - resources:
+            kinds:
+            - Deployment
+            - StatefulSet
+      validate:
+        message: >-
+          [E000][TEST]Deployments and StatefulSets should have more than two replicas.
+          (details: my-url-w-more-info)
+        pattern:
+          spec:
+            replicas: ">2"

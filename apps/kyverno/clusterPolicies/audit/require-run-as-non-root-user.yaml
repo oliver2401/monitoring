@@ -1,0 +1,135 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-run-as-non-root-user
+  annotations:
+    policies.kyverno.io/title: Require Run As Non-Root User
+    policies.kyverno.io/category: Kubernetes Security Hardening
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/description: >-
+      Containers must be required to run as non-root users. This policy ensures
+      `runAsUser` is either unset or set to a number greater than zero.      
+spec:
+  validationFailureAction: audit
+  background: true
+  rules:
+    - name: run-as-non-root-user
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      validate:
+        message: >-
+          [E010]Require Run As Non-Root User
+          (details: my-url/Kyverno+rules#Kyvernorules-[E010]RequireRunAsNon-RootUser)
+        pattern:
+          spec:
+            =(securityContext):
+              =(runAsUser): ">0"
+            =(ephemeralContainers):
+            - =(securityContext):
+                =(runAsUser): ">0"
+            =(initContainers):
+            - =(securityContext):
+                =(runAsUser): ">0"
+            containers:
+            - =(securityContext):
+                =(runAsUser): ">0"
+clusterFilter:
+  clusterProvider: "azure"
+  excludeClusterTier: "qa"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-run-as-non-root-user
+  annotations:
+    policies.kyverno.io/title: Require Run As Non-Root User
+    policies.kyverno.io/category: Kubernetes Security Hardening
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/description: >-
+      Containers must be required to run as non-root users. This policy ensures
+      `runAsUser` is either unset or set to a number greater than zero.      
+spec:
+  validationFailureAction: Enforce
+  validationFailureActionOverrides:
+    - action: Audit
+      namespaces:
+        - ai
+        - aks-command
+        - argo
+        - argo-events
+        - argo-workflows
+        - azure-devops
+        - azure-workload-identity-system
+        - cert-manager
+        - canary-checker
+        - compliance
+        - csi
+        - daemonsets
+        - dataplatform
+        - datatools
+        - default
+        - devops
+        - devx
+        - elasticsearch
+        - external-dns
+        - external-secrets
+        - gatekeeper-system
+        - gemstone
+        - gpu-resources
+        - jenkins
+        - kafka
+        - keda
+        - kserve
+        - kube-node-lease
+        - kube-public
+        - kube-system
+        - kubecost
+        - kubernetes-dashboard
+        - kubescape
+        - kyverno
+        - logging
+        - monitoring
+        - opa
+        - open
+        - opis
+        - otlp
+        - policy-reporter
+        - reporting
+        - robusta
+        - spot-handler
+        - techfoundation
+        - time
+        - vault
+        - velero
+        - walls
+  background: true
+  rules:
+    - name: run-as-non-root-user
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      validate:
+        message: >-
+          [E010]Require Run As Non-Root User
+          (details: my-url/Kyverno+rules#Kyvernorules-[E010]RequireRunAsNon-RootUser)
+        pattern:
+          spec:
+            =(securityContext):
+              =(runAsUser): ">0"
+            =(ephemeralContainers):
+            - =(securityContext):
+                =(runAsUser): ">0"
+            =(initContainers):
+            - =(securityContext):
+                =(runAsUser): ">0"
+            containers:
+            - =(securityContext):
+                =(runAsUser): ">0"
+clusterFilter:
+  clusterProvider: "azure"
+  clusterTier: "qa"
